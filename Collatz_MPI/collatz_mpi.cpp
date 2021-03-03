@@ -27,11 +27,11 @@
     #include <sys/time.h>
     #include <mpi.h>
 
-    static int collatz(const long start, const long bound, const long step)
+    static int collatz(const long start, const long bound, const int rank, const long step, const int commSize)
     {
     // compute sequence lengths
     int maxlen = 0;
-    for (long i = start; i < bound; i += step) {
+    for (long i = start+rank; i < bound; i += (step + commSize)) {
         long val = i;
         int len = 1;
         while (val != 1) {
@@ -51,46 +51,48 @@
     int main(int argc, char *argv[])
     {
          // set up MPI
+        static int globalMax; 
         int comm_sz, my_rank;
         MPI_Init(NULL, NULL);
         MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
         MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
-    printf("Collatz v1.5\n");
+        // check command line
+        if (argc != 4) {fprintf(stderr, "USAGE: %s start bound step\n", argv[0]); exit(-1);}
+        const long start = atol(argv[1]);
+        const long bound = atol(argv[2]);
+        const long step = atol(argv[3]);
+        if (start < 1) {fprintf(stderr, "ERROR: start value must be at least 1\n"); exit(-1);}
+        if (bound <= start) {fprintf(stderr, "ERROR: bound must be larger than start\n"); exit(-1);}
+        if (step < 1) {fprintf(stderr, "ERROR: step size must be at least 1\n"); exit(-1);}
 
-    // check command line
-    if (argc != 4) {fprintf(stderr, "USAGE: %s start bound step\n", argv[0]); exit(-1);}
-    const long start = atol(argv[1]);
-    const long bound = atol(argv[2]);
-    const long step = atol(argv[3]);
-    if (start < 1) {fprintf(stderr, "ERROR: start value must be at least 1\n"); exit(-1);}
-    if (bound <= start) {fprintf(stderr, "ERROR: bound must be larger than start\n"); exit(-1);}
-    if (step < 1) {fprintf(stderr, "ERROR: step size must be at least 1\n"); exit(-1);}
-    printf("start value: %ld\n", start);
-    printf("upper bound: %ld\n", bound);
-    printf("step size: %ld\n", step);
+        if(my_rank == 0){
+            printf("Collatz v1.5\n");
+            printf("start value: %ld\n", start);
+            printf("upper bound: %ld\n", bound);
+            printf("step size: %ld\n", step);
+        }
 
-    // compute range
-    const int my_start = my_rank * (long)bound / comm_sz;
-    const int my_end = (my_rank + 1) * (long)bound / comm_sz;
-  
-    
-      
-    // start time
-    timeval beg, end;
-    gettimeofday(&beg, NULL);
+        // start time
+        timeval beg, end;
+        MPI_Barrier(MPI_COMM_WORLD);  // for better timing
+        gettimeofday(&beg, NULL);
 
-    // execute timed code
-    const int maxlen = collatz(my_start, bound, comm_sz);
+        // execute timed code
+        const int maxlen = collatz(start, bound, my_rank, step, comm_sz);
 
-    // end time
-    gettimeofday(&end, NULL);
-    const double runtime = end.tv_sec - beg.tv_sec + (end.tv_usec - beg.tv_usec) / 1000000.0;
-    printf("compute time: %.6f s\n", runtime);
+        MPI_Reduce(&maxlen, &globalMax, 1, MPI_INT, MPI_MAX,0,MPI_COMM_WORLD);
+        
+        // end time
+        gettimeofday(&end, NULL);
+        const double runtime = end.tv_sec - beg.tv_sec + (end.tv_usec - beg.tv_usec) / 1000000.0;
 
-    // print result
-    printf("maximum sequence length: %d elements\n", maxlen);
+        // print result
+        if(my_rank == 0 ){
+            printf("compute time: %.6f s\n", runtime);
+            printf("maximum sequence length: %d elements\n", globalMax);
+        }
 
-    MPI_Finalize();
-    return 0;
+        MPI_Finalize();
+        return 0;
     }
