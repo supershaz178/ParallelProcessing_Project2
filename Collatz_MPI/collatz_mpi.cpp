@@ -71,6 +71,7 @@
             printf("start value: %ld\n", start);
             printf("upper bound: %ld\n", bound);
             printf("step size: %ld\n", step);
+            printf("Number of Running Processes: %d", comm_sz); 
         }
 
         // start time
