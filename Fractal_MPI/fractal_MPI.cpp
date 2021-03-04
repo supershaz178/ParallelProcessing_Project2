@@ -35,8 +35,6 @@ static void fractal(const int width, const int start, const int end, unsigned ch
   const double xMid = -0.212500155;
   const double yMid = -0.821455896;
 
-  printf("Frames: %d", end-start); 
-  printf("width: %d", width); 
   // compute pixels of each frame
   for (int frame = start; frame < end; frame++) {  // frames
     const double delta = Delta * (2 + cos(2 * M_PI * frame / (end-start)));
@@ -110,7 +108,7 @@ int main(int argc, char *argv[])
   //Set up processing blocks for process
   const int startFrame = myRank * (frames / commSize); 
   const int endFrame = (myRank+1) * (frames / commSize); 
-  const int range = endFrame * width *width - (startFrame * width * width)
+  const int range = endFrame * width *width - (startFrame * width * width);
 
   // start time
   timeval beg, end;
@@ -119,7 +117,6 @@ int main(int argc, char *argv[])
   // execute timed code
   fractal(width, startFrame,endFrame, local_pic);
 
-  printf("Gathering process: %d", myRank);
   MPI_Gather(&local_pic[startFrame], range, MPI_UNSIGNED_CHAR, global_pic, range, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
   // end time
   gettimeofday(&end, NULL);
