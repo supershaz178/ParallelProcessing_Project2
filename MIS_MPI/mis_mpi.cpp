@@ -78,6 +78,7 @@ static void mis(const ECLgraph g, unsigned char* const status, unsigned int* con
 
     MPI_Allreduce(&status[start], global_status, end - start, MPI_UNSIGNED_CHAR, MPI_MAX, MPI_COMM_WORLD);
     MPI_Allreduce(&goagain, &global_goagain, 1, MPI::BOOL, MPI_LOR, MPI_COMM_WORLD); 
+    goagain = global_goagain; 
   } while (goagain);
 }
 
