@@ -110,6 +110,7 @@ int main(int argc, char *argv[])
   //Set up processing blocks for process
   const int startFrame = myRank * (frames / commSize); 
   const int endFrame = (myRank+1) * (frames / commSize); 
+  const int range = endFrame * width *width - (startFrame * width * width)
 
   // start time
   timeval beg, end;
@@ -119,7 +120,7 @@ int main(int argc, char *argv[])
   fractal(width, startFrame,endFrame, local_pic);
 
   printf("Gathering process: %d", myRank);
-  MPI_Gather(&local_pic[0], endFrame - startFrame, MPI_INT, &global_pic[0], frames * width * width, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Gather(&local_pic[startFrame], range, MPI_UNSIGNED_CHAR, global_pic, range, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
   // end time
   gettimeofday(&end, NULL);
   const double runtime = end.tv_sec - beg.tv_sec + (end.tv_usec - beg.tv_usec) / 1000000.0;
