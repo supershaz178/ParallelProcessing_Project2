@@ -29,15 +29,17 @@ Author: Martin Burtscher
 #include <mpi.h>
 #include "BMP43805351.h"
 
-static void fractal(const int width, const int frames, unsigned char* const pic, int start, int end)
+static void fractal(const int width, const int start, const int end, unsigned char* const pic)
 {
   const double Delta = 0.0009;
   const double xMid = -0.212500155;
   const double yMid = -0.821455896;
 
+  printf("Frames: %d", end-start); 
+  printf("width: %d", width); 
   // compute pixels of each frame
   for (int frame = start; frame < end; frame++) {  // frames
-    const double delta = Delta * (2 + cos(2 * M_PI * frame / frames));
+    const double delta = Delta * (2 + cos(2 * M_PI * frame / (end-start)));
     const double xMin = xMid - delta;
     const double yMin = yMid - delta;
     const double dw = 2.0 * delta / width;
@@ -89,7 +91,7 @@ int main(int argc, char *argv[])
     fprintf(stderr, "ERROR: number_of_frames must be at least 1\n"); exit(-1);
   }
   if(frames % commSize != 0){
-    fprintf(stderr, "ERROR: number_of_frames mut be a multiple of the number of processes\n"); 
+    fprintf(stderr, "ERROR: number_of_frames must be a multiple of the number of processes\n"); 
     exit(-1); 
   }
   if(myRank == 0){
@@ -98,19 +100,26 @@ int main(int argc, char *argv[])
   }
 
   // allocate picture array
-  unsigned char* pic = new unsigned char [frames * width * width];
+  unsigned char* local_pic = new unsigned char [(frames * width * width)];
+  unsigned char* global_pic = NULL;
+
+  if(myRank == 0){
+    global_pic = new unsigned char[frames * width * width];
+  } 
 
   //Set up processing blocks for process
   const int startFrame = myRank * (frames / commSize); 
-  const int endFrame = startFrame + (frames / commSize); 
+  const int endFrame = (myRank+1) * (frames / commSize); 
 
   // start time
   timeval beg, end;
-  gettimeofday(&beg, NULL);
-  MPI_Barrier(MPI_COMM_WORLD); 
+  MPI_Barrier(MPI_COMM_WORLD);
+  gettimeofday(&beg, NULL); 
   // execute timed code
-  fractal(width, frames, pic, startFrame, endFrame);
+  fractal(width, startFrame,endFrame, local_pic);
 
+  printf("Gathering process: %d", myRank);
+  MPI_Gather(&local_pic[0], endFrame - startFrame, MPI_INT, &global_pic[0], frames * width * width, MPI_INT, 0, MPI_COMM_WORLD);
   // end time
   gettimeofday(&end, NULL);
   const double runtime = end.tv_sec - beg.tv_sec + (end.tv_usec - beg.tv_usec) / 1000000.0;
@@ -124,7 +133,7 @@ int main(int argc, char *argv[])
       BMP24 bmp(0, 0, width, width);
       for (int y = 0; y < width; y++) {
         for (int x = 0; x < width; x++) {
-          bmp.dot(x, y, pic[frame * width * width + y * width + x] * 0x000001 + 0x80ff00 - pic[frame * width * width + y * width + x] * 0x000100);
+          bmp.dot(x, y, global_pic[frame * width * width + y * width + x] * 0x000001 + 0x80ff00 - global_pic[frame * width * width + y * width + x] * 0x000100);
         }
       }
       char name[32];
@@ -138,7 +147,8 @@ int main(int argc, char *argv[])
   }
 
   // clean up
+  delete [] local_pic; 
+  delete [] global_pic;
   MPI_Finalize(); 
-  delete [] pic;
   return 0;
 }
