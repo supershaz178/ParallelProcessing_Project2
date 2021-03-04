@@ -92,8 +92,10 @@ int main(int argc, char *argv[])
     fprintf(stderr, "ERROR: number_of_frames mut be a multiple of the number of processes\n"); 
     exit(-1); 
   }
-  printf("frames: %d\n", frames);
-  printf("width: %d\n", width);
+  if(myRank == 0){
+    printf("frames: %d\n", frames);
+    printf("width: %d\n", width);
+  }
 
   // allocate picture array
   unsigned char* pic = new unsigned char [frames * width * width];
