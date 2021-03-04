@@ -48,7 +48,7 @@ static void mis(const ECLgraph g, unsigned char* const status, unsigned int* con
 
   //intialize global recieving arrays
   unsigned char* global_status = new unsigned char [g.nodes];
-  unsigned int* global_rndval = new unsigned int [g.nodes];
+  unsigned int* global_goagain;
  
 
   bool goagain;
@@ -77,7 +77,7 @@ static void mis(const ECLgraph g, unsigned char* const status, unsigned int* con
     }
 
     MPI_Allreduce(&status[start], global_status, end - start, MPI_UNSIGNED_CHAR, MPI_MAX, MPI_COMM_WORLD);
-    MPI_Allreduce(&rndval[start], global_rndval, end - start, MPI::BOOL, MPI_LOR, MPI_COMM_WORLD); 
+    MPI_Allreduce(&goagain, global_goagain, 1, MPI::BOOL, MPI_LOR, MPI_COMM_WORLD); 
   } while (goagain);
 }
 
