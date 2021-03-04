@@ -48,7 +48,7 @@ static void mis(const ECLgraph g, unsigned char* const status, unsigned int* con
 
   //intialize global recieving arrays
   unsigned char* global_status = new unsigned char [g.nodes];
-  unsigned bool global_goagain;
+  bool global_goagain;
  
 
   bool goagain;
